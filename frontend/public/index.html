@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RouteMax - Next-Gen Logistics</title>
+    <!-- Inter font from Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom Tailwind configuration for immediate use via CDN */
+        :root {
+            --primary-green: #34D399; /* A vibrant green for accents */
+            --dark-blue: #1A202C; /* Dark background */
+            --light-gray: #CBD5E0; /* Light text for contrast */
+            --medium-gray: #4A5568; /* Medium gray for secondary text */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0F172A; /* A very dark blue/black for the overall background */
+            color: #E2E8F0; /* Light text color for readability */
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden; /* Prevent horizontal scroll */
+        }
+
+        /* Apply custom colors to Tailwind's utility classes */
+        .bg-primary-dark { background-color: #0F172A; }
+        .text-primary-green { color: var(--primary-green); }
+        .bg-primary-green { background-color: var(--primary-green); }
+        .hover\:bg-primary-green-darker:hover { background-color: #2F9C76; } /* Slightly darker green on hover */
+        .border-primary-green { border-color: var(--primary-green); }
+        .text-light-gray { color: var(--light-gray); }
+        .text-medium-gray { color: var(--medium-gray); }
+        .bg-card-dark { background-color: #1E293B; } /* Darker shade for cards/sections */
+
+        /* Gradient background for hero section */
+        .hero-gradient-bg {
+            background: linear-gradient(135deg, #1A202C 0%, #0F172A 50%, #1A202C 100%);
+        }
+    </style>
+    <script>
+        // Tailwind JIT mode configuration for custom colors and fonts
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-green': '#34D399',
+                        'primary-dark': '#0F172A',
+                        'card-dark': '#1E293B',
+                        'light-gray': '#E2E8F0',
+                        'medium-gray': '#CBD5E0',
+                        'dark-blue-text': '#1A202C',
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <!-- Your React app will be mounted here -->
+</body>
+</html>

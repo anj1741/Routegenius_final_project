@@ -3,6 +3,7 @@ package com.routegenius.backend.repository;
 import com.routegenius.backend.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+
 import java.util.Optional;
 
 @Repository

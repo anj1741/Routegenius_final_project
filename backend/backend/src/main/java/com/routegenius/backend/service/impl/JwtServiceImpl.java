@@ -1,5 +1,6 @@
 package com.routegenius.backend.service.impl;
 
+import com.routegenius.backend.entity.User;
 import com.routegenius.backend.service.JwtService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -9,16 +10,23 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+
 import java.security.Key;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
 @Service
 public class JwtServiceImpl implements JwtService {
 
-    @Value("${jwt.secret}")
-    private String jwtSecret;
+    // Inject JWT secret key from application.properties
+    @Value("${jwt.secret}") // This must match the property name in application.properties
+    private String jwtSigningKey;
+
+    // Inject JWT expiration time from application.properties
+    @Value("${jwt.expiration}") // This must match the property name in application.properties
+    private long jwtExpiration; // Use 'jwt.expiration' from properties
 
     @Override
     public String extractUserName(String token) {
@@ -27,26 +35,13 @@ public class JwtServiceImpl implements JwtService {
 
     @Override
     public String generateToken(UserDetails userDetails) {
-        return Jwts.builder().setSubject(userDetails.getUsername())
-                .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 24))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
-                .compact();
-    }
-
-    @Override
-    public String generateRefreshToken(Map<String, Object> extraClaims, UserDetails userDetails) {
-        return Jwts.builder().setClaims(extraClaims).setSubject(userDetails.getUsername())
-                .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 604800000))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
-                .compact();
+        return generateToken(new HashMap<>(), userDetails);
     }
 
     @Override
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String userName = extractUserName(token);
-        return (userName.equals(userDetails.getUsername()) && !isTokenExpired(token));
+        return (userName.equals(userDetails.getUsername())) && !isTokenExpired(token);
     }
 
     private <T> T extractClaim(String token, Function<Claims, T> claimsResolvers) {
@@ -54,16 +49,36 @@ public class JwtServiceImpl implements JwtService {
         return claimsResolvers.apply(claims);
     }
 
-    private Key getSigningKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
-        return Keys.hmacShaKeyFor(keyBytes);
-    }
+    private String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
+        // Add user roles to claims
+        if (userDetails instanceof User) {
+            extraClaims.put("role", ((User) userDetails).getRole().name());
+        }
 
-    private Claims extractAllClaims(String token) {
-        return Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(token).getBody();
+        return Jwts.builder()
+                .setClaims(extraClaims)
+                .setSubject(userDetails.getUsername())
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration)) // Use injected expiration
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
     }
 
     private boolean isTokenExpired(String token) {
-        return extractClaim(token, Claims::getExpiration).before(new Date());
+        return extractExpiration(token).before(new Date());
+    }
+
+    private Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
+    }
+
+    private Claims extractAllClaims(String token) {
+        return Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(token)
+                .getBody();
+    }
+
+    private Key getSigningKey() {
+        byte[] keyBytes = Decoders.BASE64.decode(jwtSigningKey);
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 }

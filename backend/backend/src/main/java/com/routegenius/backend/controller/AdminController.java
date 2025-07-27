@@ -1,112 +1,86 @@
 package com.routegenius.backend.controller;
 
+import com.routegenius.backend.dto.RegisterRequest;
 import com.routegenius.backend.dto.UserDto;
-import com.routegenius.backend.entity.Role;
 import com.routegenius.backend.entity.User;
-import com.routegenius.backend.repository.UserRepository;
+import com.routegenius.backend.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/admin")
 @RequiredArgsConstructor
+// FIX: Changed 'ROLE_ADMIN' to 'ADMIN' to match Role.ADMIN.name() from User.java
+@PreAuthorize("hasAuthority('ADMIN')")
 public class AdminController {
 
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final AuthService authService;
 
-    // --- Internal DTO for Admin User Operations (Create/Update) ---
-    public static class AdminUserRequest {
-        public String firstName;
-        // public String lastName; // DELETE THIS LINE
-        public String email;
-        public String password; // Optional for update, required for create
-        public String role;
-    }
-    // -----------------------------------------------------------------
-
-
+    // Get all users (Admin only)
     @GetMapping("/users")
     public ResponseEntity<List<UserDto>> getAllUsers() {
-        List<UserDto> users = userRepository.findAll().stream()
-                .map(this::convertToDto)
+        List<User> users = authService.getAllUsers();
+        List<UserDto> userDtos = users.stream()
+                .map(user -> UserDto.builder()
+                        .id(user.getId())
+                        .firstName(user.getFirstName())
+                        .email(user.getEmail())
+                        .role(user.getRole().name())
+                        .build())
                 .collect(Collectors.toList());
-        return ResponseEntity.ok(users);
+        return ResponseEntity.ok(userDtos);
     }
 
+    // Get user by ID (Admin only)
+    @GetMapping("/users/{id}")
+    public ResponseEntity<UserDto> getUserById(@PathVariable Long id) {
+        User user = authService.getUserById(id);
+        UserDto userDto = UserDto.builder()
+                .id(user.getId())
+                .firstName(user.getFirstName())
+                .email(user.getEmail())
+                .role(user.getRole().name())
+                .build();
+        return ResponseEntity.ok(userDto);
+    }
+
+    // Create a new user (Admin only)
     @PostMapping("/users")
-    public ResponseEntity<UserDto> createUser(@RequestBody AdminUserRequest request) {
-        if (userRepository.findByEmail(request.email).isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .build();
-        }
-        if (request.password == null || request.password.isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        User user = new User();
-        user.setFirstName(request.firstName);
-        // user.setLastName(request.lastName); // DELETE THIS LINE
-        user.setEmail(request.email);
-        user.setPassword(passwordEncoder.encode(request.password));
-        try {
-            user.setRole(Role.valueOf(request.role.toUpperCase()));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        User savedUser = userRepository.save(user);
-        return ResponseEntity.status(HttpStatus.CREATED).body(convertToDto(savedUser));
+    public ResponseEntity<UserDto> createUser(@Valid @RequestBody RegisterRequest request) {
+        User newUser = authService.createUser(request);
+        UserDto userDto = UserDto.builder()
+                .id(newUser.getId())
+                .firstName(newUser.getFirstName())
+                .email(newUser.getEmail())
+                .role(newUser.getRole().name())
+                .build();
+        return ResponseEntity.status(HttpStatus.CREATED).body(userDto);
     }
 
+    // Update user (Admin only)
     @PutMapping("/users/{id}")
-    public ResponseEntity<UserDto> updateUser(@PathVariable Long id, @RequestBody AdminUserRequest request) {
-        Optional<User> userOptional = userRepository.findById(id);
-        if (userOptional.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        User user = userOptional.get();
-        user.setFirstName(request.firstName);
-        // user.setLastName(request.lastName); // DELETE THIS LINE
-        user.setEmail(request.email);
-
-        if (request.password != null && !request.password.isEmpty()) {
-            user.setPassword(passwordEncoder.encode(request.password));
-        }
-
-        try {
-            user.setRole(Role.valueOf(request.role.toUpperCase()));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        User updatedUser = userRepository.save(user);
-        return ResponseEntity.ok(convertToDto(updatedUser));
+    public ResponseEntity<UserDto> updateUser(@PathVariable Long id, @Valid @RequestBody RegisterRequest request) {
+        User updatedUser = authService.updateUser(id, request);
+        UserDto userDto = UserDto.builder()
+                .id(updatedUser.getId())
+                .firstName(updatedUser.getFirstName())
+                .email(updatedUser.getEmail())
+                .role(updatedUser.getRole().name())
+                .build();
+        return ResponseEntity.ok(userDto);
     }
 
+    // Delete user (Admin only)
     @DeleteMapping("/users/{id}")
     public ResponseEntity<String> deleteUser(@PathVariable Long id) {
-        if (!userRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
-        }
-        userRepository.deleteById(id);
+        authService.deleteUser(id);
         return ResponseEntity.ok("User deleted successfully.");
-    }
-
-    private UserDto convertToDto(User user) {
-        UserDto userDto = new UserDto();
-        userDto.setId(user.getId());
-        userDto.setFirstName(user.getFirstName());
-        // userDto.setLastName(user.getLastName()); // DELETE THIS LINE (if it was uncommented)
-        userDto.setEmail(user.getEmail());
-        userDto.setRole(user.getRole().name());
-        return userDto;
     }
 }
